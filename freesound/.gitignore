@@ -1,9 +1,0 @@
-/media/data
-.amateras
-local_settings.py
-*.pyc
-.amateras
-audio.log
-web.log
-search.log
-uploads/*
