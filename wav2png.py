@@ -17,9 +17,15 @@ parser.add_option("-h", "--height", action="store", dest="image_height", type="i
 parser.add_option("-f", "--fft", action="store", dest="fft_size", type="int", help="fft size, power of 2 for increased performance (default %default)")
 parser.add_option("-p", "--profile", action="store_true", dest="profile", help="run profiler and output profiling information")
 
-parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=171, fft_size=2048)
+parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=500, image_height=None, fft_size=2048)
 
 (options, args) = parser.parse_args()
+
+if options.image_height == None:
+    # For some reason it complains about image heights that are odd numbers???
+    options.image_height = int(options.image_width // 2)
+    if options.image_height % 2 == 0:
+        options.image_height -= 1
 
 if len(args) == 0:
     parser.print_help()

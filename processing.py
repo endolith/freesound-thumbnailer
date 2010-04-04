@@ -369,7 +369,7 @@ class WaveformImage(object):
         for x in range(self.image_width):
             self.pix[x, self.image_height/2] = tuple(map(lambda p: p+a, self.pix[x, self.image_height/2]))
         
-        self.image.save(filename)
+        self.image.save(filename, format = 'png')
         
         
 class SpectrogramImage(object):
@@ -458,7 +458,7 @@ def create_wave_images(input_filename, output_filename_w, output_filename_s, ima
         progress_callback(100)
         
     waveform.save(output_filename_w)
-    spectrogram.save(output_filename_s)
+    #spectrogram.save(output_filename_s)
 
 
 def convert_to_wav(input_filename, output_filename):

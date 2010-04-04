@@ -1,27 +1,16 @@
-* install easy_install
+A script to generate thumbnails for audio files, derived from the method used on Freesound.org
 
-* particularities:
-    django from svn ( http://www.djangoproject.com/download/ )
-    django debug_toolbar, download + copy into python path
-    django command extensions ( http://code.google.com/p/django-command-extensions/ <- python setup.py install)
-    install markdown from git repos + install mdx_wikilink.py into python path
-    install judtda helpdesk, http://code.google.com/p/jutda-helpdesk/ in python path as "helpdesk"
-    install PIL (Python Imaging Library)
-    install NumPy
-    install python module "audiolab" (dependency: libsndfile)
+Dependencies:
+ * NumPy
+ * PIL (Python Imaging Library)
+ * scikits "audiolab" (use setuptools' easy_install, for instance)
+    * dependency: libsndfile
     
-* easy_install the following packages:
-	recaptcha-client
-    BeautifulSoup
-    feedparser
-    ipython
-    psycopg2
-    python-memcached
-	python-cjson
-    pycrypto
-    pygments
-	mysql-python ( only for the DB conversion)
+Then to set this as your thumbnailer, run gconf-editor, go to /desktop/gnome/thumbnailers/, and, for each file format you want to be thumbnailed, edit the "command" key and change the line to something like this:
 
-* install getid3 in the php include path
+    /[path to]/wav2png.py -w %s %i -a %o
+    
+(In Ubuntu, it defaults to "/usr/bin/totem-video-thumbnailer -s %s %u %o", which, as far as I know, does nothing.)
 
-* create the directory /var/log/freesound/ and make sure it's writable by whoever is running the server
+Then check the "enable" checkbox, and when you refresh a folder with audio files in it, it should show the thumbnails.
+
