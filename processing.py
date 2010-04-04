@@ -22,6 +22,7 @@
 
 from PIL import ImageFilter, ImageChops, Image, ImageDraw, ImageColor
 from functools import partial
+from time import time
 import math
 import numpy
 import os
@@ -86,7 +87,7 @@ def get_max_level(filename):
 
 class AudioProcessor(object):
     """
-    The audio processor processes chunks of audio an calculates the spectrac centroid and the peak
+    The audio processor processes chunks of audio and calculates the spectral centroid and the peak
     samples in that chunk of audio.
     """
     def __init__(self, input_filename, fft_size, window_function=numpy.hanning):
@@ -277,7 +278,7 @@ class WaveformImage(object):
     """
     def __init__(self, image_width, image_height, palette=1):
         if image_height % 2 == 0:
-            raise AudioProcessingException, "Height should be uneven: images look much better at uneven height"
+            raise AudioProcessingException, "Height should be an odd number: images look much better this way"
 
         if palette == 1:
             background_color = (0,0,0)
@@ -371,77 +372,20 @@ class WaveformImage(object):
         
         self.image.save(filename, format = 'png')
         
-        
-class SpectrogramImage(object):
-    """
-    Given spectra from the AudioProcessor, this class will construct a wavefile image which
-    can be saved as PNG.
-    """
-    def __init__(self, image_width, image_height, fft_size):
-        self.image_width = image_width
-        self.image_height = image_height
-        self.fft_size = fft_size
-
-        self.image = Image.new("RGB", (image_height, image_width))
-
-        colors = [
-            (0, 0, 0),
-            (58/4,68/4,65/4),
-            (80/2,100/2,153/2),
-            (90,180,100),
-            (224,224,44),
-            (255,60,30),
-            (255,255,255)
-         ]
-        self.palette = interpolate_colors(colors)
-
-        # generate the lookup which translates y-coordinate to fft-bin
-        self.y_to_bin = []
-        f_min = 100.0
-        f_max = 22050.0
-        y_min = math.log10(f_min)
-        y_max = math.log10(f_max)
-        for y in range(self.image_height):
-            freq = math.pow(10.0, y_min + y / (image_height - 1.0) *(y_max - y_min))
-            bin = freq / 22050.0 * (self.fft_size/2 + 1)
-
-            if bin < self.fft_size/2:
-                alpha = bin - int(bin)
-                
-                self.y_to_bin.append((int(bin), alpha * 255))
-           
-        # this is a bit strange, but using image.load()[x,y] = ... is
-        # a lot slower than using image.putadata and then rotating the image
-        # so we store all the pixels in an array and then create the image when saving
-        self.pixels = []
-            
-    def draw_spectrum(self, x, spectrum):
-        # for all frequencies, draw the pixels
-        for (index, alpha) in self.y_to_bin:
-            self.pixels.append( self.palette[int((255.0-alpha) * spectrum[index] + alpha * spectrum[index + 1])] )
-        
-        # if the FFT is too small to fill up the image, fill with black to the top
-        for y in range(len(self.y_to_bin), self.image_height):
-            self.pixels.append(self.palette[0])
-
-    def save(self, filename, quality=80):
-        assert filename.lower().endswith(".jpg")
-        self.image.putdata(self.pixels)
-        self.image.transpose(Image.ROTATE_90).save(filename, quality=quality)
-
 
 def create_wave_images(input_filename, output_filename_w, output_filename_s, image_width, image_height, fft_size, progress_callback=None):
     """
     Utility function for creating both wavefile and spectrum images from an audio input file.
     """
+    start_time = time()
     processor = AudioProcessor(input_filename, fft_size, numpy.hanning)
     samples_per_pixel = processor.audio_file.nframes / float(image_width)
     
     waveform = WaveformImage(image_width, image_height)
-    spectrogram = SpectrogramImage(image_width, image_height, fft_size)
     
     for x in range(image_width):
-        
+        if time() - start_time > 30: # Kludge to crash if it takes longer than 10 seconds
+            raise Exception("Took too long")
         if progress_callback and x % (image_width/10) == 0:
             progress_callback((x*100)/image_width)
 
@@ -452,148 +396,9 @@ def create_wave_images(input_filename, output_filename_w, output_filename_s, ima
         peaks = processor.peaks(seek_point, next_seek_point)
         
         waveform.draw_peaks(x, peaks, spectral_centroid)
-        spectrogram.draw_spectrum(x, db_spectrum)
     
     if progress_callback:
         progress_callback(100)
         
     waveform.save(output_filename_w)
-    #spectrogram.save(output_filename_s)
 
-
-def convert_to_wav(input_filename, output_filename):
-    """
-    converts any audio file type to wav, 44.1, 16bit, stereo
-    uses mplayer to play whatever, and store the format as a wave file
-    """
-    
-    if not os.path.exists(input_filename):
-        raise AudioProcessingException, "file %s does not exist" % input_filename
-    
-    command = ["mplayer", "-vc", "null", "-vo", "null", "-af", "channels=2,resample=44100:0:0", "-ao", "pcm:fast:file=\"%s\"" % output_filename, input_filename]
-    
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        (stdout, stderr) = process.communicate()
-    except OSError:
-        raise AudioProcessingException, "mplayer not found."
-    
-    if process.returncode != 0 or not os.path.exists(output_filename):
-        raise AudioProcessingException, stdout
-    
-    return stdout
-    
-
-def audio_info(input_filename):
-    """
-    extract samplerate, channels, ... from an audio file using getid3
-    in order for this to work make sure that the getid3 directory (in this directory) is added to the path!
-    """
-    
-    if not os.path.exists(input_filename):
-        raise AudioProcessingException, "file %s does not exist" % input_filename
-
-    if not input_filename.lower().endswith(".mp3"):
-        command = ["sndfile-info", input_filename]
-    else:
-        command = ["lame", "--decode", input_filename, "/dev/null"]
-        
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        (stdout, stderr) = process.communicate()
-    except OSError:
-        raise AudioProcessingException, "can not find audio-info extraction program"
-
-    if process.returncode != 0:
-        raise AudioProcessingException, stdout
-    
-    stdout = stdout.replace("\n", " ")
-    
-    if not input_filename.lower().endswith(".mp3"):
-        # parse sndfile info
-        bitdepth = None
-        
-        m = re.match(r".*Bit Width\s+: (\d+).*", stdout)
-        try:
-            bitdepth = int(m.group(1))
-        except:
-            pass
-        
-        m = re.match(r".+Sample Rate : (\d+).+", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in sndfile-info, no Sample Rate"
-        samplerate = int(m.group(1))
-        
-        m = re.match(r".*Channels    : (\d+).*", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in sndfile-info, no Channels"
-        channels = int(m.group(1))
-        
-        m = re.match(r".*Duration    : (?P<hours>\d+):(?P<minutes>\d+):(?P<seconds>[\d\.]+).*", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in sndfile-info, no duration"
-        duration = int(m.group("hours"))*60*60 + int(m.group("minutes"))*60 + float(m.group("seconds"))
-    else:
-        bitdepth = None
-        
-        m = re.match(r".*(?P<channels>\d) channel.*", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in lame, no channels"
-        channels = int(m.group("channels"))
-        
-        m = re.match(r".*\((?P<samplerate>[\d\.]+) kHz.*", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in lame, no kHz"
-        samplerate = float(m.group("samplerate"))*1000
-        
-        skip_start = 0
-        try:
-            m = re.match(r".*skipping initial (?P<skip_start>\d+) samples.*", stdout)
-            skip_start = int(m.group("skip_start"))
-        except:
-            pass
-            
-        skip_end = 0
-        try:
-            m = re.match(r".*skipping final (?P<skip_end>\d+) samples.*", stdout)
-            skip_end = int(m.group("skip_end"))
-        except:
-            pass
-
-        m = re.match(r".*Frame#  \d+\/(?P<frames>\d+).*", stdout)
-        if m == None:
-            raise AudioProcessingException, "non-expected output in lame, no frames"
-        frames = int(m.group("frames"))
-        
-        duration = ((frames*1152) - skip_end - skip_start)/samplerate
-    
-    bitrate = (os.path.getsize(input_filename) * 8.0) / 1024.0 / duration
-
-    sound_type = os.path.splitext(input_filename.lower())[1].strip(".")
-
-    if sound_type == "fla":
-        sound_type = "flac"
-    elif sound_type == "aif":
-        sound_type = "aiff"
-
-    return dict(samplerate=samplerate, bitrate=bitrate, bits=bitdepth, channels=channels, type=sound_type, duration=duration)
-
-
-def convert_to_mp3(input_filename, output_filename):
-    """
-    converts the incoming wave file to a lofi mp3 file
-    """
-    
-    if not os.path.exists(input_filename):
-        raise AudioProcessingException, "file %s does not exist" % input_filename
-
-    try:
-        command = ["lame", "--silent", "--abr", "70", input_filename, output_filename]
-    
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        (stdout, stderr) = process.communicate()
-    except OSError:
-        raise AudioProcessingException, "lame not found"
-
-    if process.returncode != 0 or not os.path.exists(output_filename):
-        raise AudioProcessingException, stdout

@@ -21,8 +21,8 @@ parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=
 
 (options, args) = parser.parse_args()
 
+# Force image height to be an odd number
 if options.image_height == None:
-    # For some reason it complains about image heights that are odd numbers???
     options.image_height = int(options.image_width // 2)
     if options.image_height % 2 == 0:
         options.image_height -= 1
@@ -44,9 +44,9 @@ for input_file in args:
     output_file_w = options.output_filename_w or input_file + "_w.png"
     output_file_s = options.output_filename_s or input_file + "_s.jpg"
     
-    args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, progress_callback)
+    args = (input_file, output_file_w, output_file_s, options.image_width, options.image_height, options.fft_size, )#progress_callback)
 
-    print "processing file %s:\n\t" % input_file,
+    print "Generating thumbnail for file %s:\n\t" % input_file,
 
     if not options.profile:
         try:
