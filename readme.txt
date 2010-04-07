@@ -14,6 +14,8 @@ Then to set this as your thumbnailer, run gconf-editor, go to /desktop/gnome/thu
 
 Then check the "enable" checkbox, and when you refresh a folder with audio files in it, it should show the thumbnails.
 
+Error messages for Gnome thumbnailers end up in the file ~/.xsession-errors, intuitively enough.  >:(
+
 You can create new entries with commands like this:
 
     gconftool-2 --type=bool --set "/desktop/gnome/thumbnailers/audio@x-aiff/enable" "true"
@@ -23,11 +25,10 @@ I don't know how else to add a new filetype.  Then just edit it in gconf-editor 
 Bugs/Todo:
  - On short files it fails - "step argument must not be zero"
  - Fails on GSM WAV - can't seek
- - Locks up the CPU on 32-bit float - audiolab reads it incorrectly?  - implement a timeout?
+ - Locks up the CPU on 32-bit float - audiolab reads it incorrectly? - implement a better timeout?
  - Should it plot both channels of a stereo file?  Should it mix them?  Should it show 4-channel files as 4 skinnier tracks in a square?
  - Discontinuity at beginning affects color.  Fade in and out?
- - Blend colors like the real light spectrum so that white noise is white?  Planning to experiment with other methods anyway...
+ - Blend colors like the real light spectrum so that white noise is white?  Most things just end up greenish yellow.  Planning to experiment with other methods anyway...
  - Put some kind of border around it like movie thumbnails to show that it's a sound file? 
- 
-Error messages for gnome thumbnailers end up in the file ~/.xsession-errors, intuitively enough.
+ - DC offset should not be included in spectral centroid
 
