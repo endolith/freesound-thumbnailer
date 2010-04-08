@@ -168,25 +168,26 @@ class AudioProcessor(object):
         fft = numpy.fft.rfft(samples)
         spectrum = self.scale * numpy.abs(fft) # normalized abs(FFT) between 0 and 1
         length = numpy.float64(spectrum.shape[0])
-        
-        # scale the db spectrum from [- spec_range db ... 0 db] > [0..1]
-        db_spectrum = ((20*(numpy.log10(spectrum + 1e-60))).clip(-spec_range, 0.0) + spec_range)/spec_range
+        spectrum[:2] = 0 # DC offset should not be included
         
         energy = spectrum.sum()
-        spectral_centroid = 0
-        
-        if energy > 1e-60:
+        if energy < 1e-60:
+            spectral_centroid = -1 # Silence
+        else:
             # calculate the spectral centroid
             
-            if self.spectrum_range == None:
+            if self.spectrum_range == None:  #Always is?
                 self.spectrum_range = numpy.arange(length)
         
+            # Compute the spectral centroid in hertz
             spectral_centroid = (spectrum * self.spectrum_range).sum() / (energy * (length - 1)) * self.audio_file.samplerate * 0.5
             
-            # clip > log10 > scale between 0 and 1
+            # Clip centroid to desired frequency range, apply log so it's 
+            # proportional to human perception of frequency, and then scale 
+            # desired frequency range from 0 to 1
             spectral_centroid = (math.log10(self.clip(spectral_centroid, self.lower, self.higher)) - self.lower_log) / (self.higher_log - self.lower_log)
         
-        return (spectral_centroid, db_spectrum)
+        return (spectral_centroid)
 
 
     def peaks(self, start_seek, end_seek):
@@ -324,7 +325,11 @@ class WaveformImage(object):
         y1 = self.image_height * 0.5 - peaks[0] * (self.image_height - 4) * 0.5
         y2 = self.image_height * 0.5 - peaks[1] * (self.image_height - 4) * 0.5
         
-        line_color = self.color_lookup[int(spectral_centroid*255.0)]
+        if spectral_centroid == -1:
+            # Dark gray for silence
+            line_color = (50, 50, 50)
+        else:
+            line_color = self.color_lookup[int(spectral_centroid*255.0)]
         
         if self.previous_y != None:
             self.draw.line([self.previous_x, self.previous_y, x, y1, x, y2], line_color)
@@ -392,7 +397,7 @@ def create_wave_images(input_filename, output_filename_w, output_filename_s, ima
         seek_point = int(x * samples_per_pixel)
         next_seek_point = int((x + 1) * samples_per_pixel)
         
-        (spectral_centroid, db_spectrum) = processor.spectral_centroid(seek_point)
+        spectral_centroid = processor.spectral_centroid(seek_point)
         peaks = processor.peaks(seek_point, next_seek_point)
         
         waveform.draw_peaks(x, peaks, spectral_centroid)

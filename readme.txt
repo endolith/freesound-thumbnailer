@@ -30,5 +30,4 @@ Bugs/Todo:
  - Discontinuity at beginning affects color.  Fade in and out?
  - Blend colors like the real light spectrum so that white noise is white?  Most things just end up greenish yellow.  Planning to experiment with other methods anyway...
  - Put some kind of border around it like movie thumbnails to show that it's a sound file? 
- - DC offset should not be included in spectral centroid
 
