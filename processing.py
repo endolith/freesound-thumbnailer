@@ -231,15 +231,15 @@ class AudioProcessor(object):
 
 
 def interpolate_colors(colors, flat=False, num_colors=256):
-    """ given a list of colors, create a larger list of colors interpolating
-    the first one. If flatten is True a list of numers will be returned. If
+    """ given a list of colors, create a larger list of colors linearly interpolating
+    the first one. If flatten is True a list of numbers will be returned. If
     False, a list of (r,g,b) tuples. num_colors is the number of colors wanted
     in the final list """
     
     palette = []
     
     for i in range(num_colors):
-        index = (i * (len(colors) - 1))/(num_colors - 1.0)
+        index = (i * (len(colors) - 1))/(num_colors - 1.0) # same as numpy.linspace(0,len(colors)-1,num_colors)
         index_int = int(index)
         alpha = index - float(index_int)
         
