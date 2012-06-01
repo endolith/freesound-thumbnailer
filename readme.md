@@ -10,11 +10,11 @@ Then to set this as your thumbnailer, run gconf-editor, go to /desktop/gnome/thu
 
     /[path to]/wav2png.py -w %s %i -a %o
     
-(In Ubuntu, it defaults to "/usr/bin/totem-video-thumbnailer -s %s %u %o", which, as far as I know, does nothing.)
+(In Ubuntu, it defaults to `/usr/bin/totem-video-thumbnailer -s %s %u %o`, which, as far as I know, does nothing.)
 
 Then check the "enable" checkbox, and when you refresh a folder with audio files in it, it should show the thumbnails.
 
-Error messages for Gnome thumbnailers end up in the file ~/.xsession-errors, intuitively enough.  >:(
+Error messages for Gnome thumbnailers end up in the file `~/.xsession-errors`, intuitively enough.  >:(
 
 You can create new entries with commands like this:
 
@@ -30,4 +30,4 @@ Bugs/Todo:
  - Discontinuity at beginning affects color.  Fade in and out?
  - Blend colors like the real light spectrum so that white noise is white?  Most things just end up greenish yellow.  Planning to experiment with other methods anyway...
  - Put some kind of border around it like movie thumbnails to show that it's a sound file? 
-- I've switched from Ubuntu to Windows 7 and I'd love to be able to see these in Windows, but writing a thumbnailer seems more involved. Someone do it for me, plz!  :/  http://superuser.com/q/267392/13889
+ - I've switched from Ubuntu to Windows 7 and I'd love to be able to see these in Windows, but writing a thumbnailer seems more involved. Someone do it for me, plz!  :/  http://superuser.com/q/267392/13889
