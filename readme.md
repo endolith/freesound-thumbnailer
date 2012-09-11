@@ -41,6 +41,7 @@ Bugs/Todo
  - On short files it fails - "step argument must not be zero"
  - Fails on GSM WAV - can't seek
  - Locks up the CPU on 32-bit float - audiolab reads it incorrectly? - implement a better timeout?
+ - libsndfile doesn't read mp3s. Convert them first?
  - Should it plot both channels of a stereo file?  Should it mix them?  Should it show 4-channel files as 4 skinnier tracks in a square?
  - Discontinuity at beginning affects color.  Fade in and out?
  - Blend colors like the real light spectrum so that white noise is white?  Most things just end up greenish yellow.  Planning to experiment with other methods anyway...
