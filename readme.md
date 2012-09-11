@@ -1,7 +1,7 @@
 Description
 -----------
 
-A script to generate thumbnails for audio files, derived from the method used on Freesound.org
+A script to generate thumbnails for audio files, derived from the method used on Freesound.org (amplitude envelope with color representing spectral centroid)
 
 [Screenshot](http://flic.kr/p/7QJpid)
 ------------
