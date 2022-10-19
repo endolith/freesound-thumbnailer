@@ -63,7 +63,7 @@ def get_max_level(filename):
     buffer_size = 4096
     audio_file = audiolab.Sndfile(filename, 'r')
     n_samples_left = audio_file.nframes
-    
+
     while n_samples_left:
         to_read = min(buffer_size, n_samples_left)
 
@@ -76,13 +76,13 @@ def get_max_level(filename):
         # convert to mono by selecting left channel only
         if audio_file.channels > 1:
             samples = samples[:,0]
-        
+
         max_value = max(max_value, numpy.abs(samples).max())
-        
+
         n_samples_left -= to_read
-            
+
     audio_file.close()
-    
+
     return max_value
 
 class AudioProcessor(object):
@@ -92,7 +92,7 @@ class AudioProcessor(object):
     """
     def __init__(self, input_filename, fft_size, window_function=numpy.hanning):
         max_level = get_max_level(input_filename)
-        
+
         self.audio_file = audiolab.Sndfile(input_filename, 'r')
         self.fft_size = fft_size
         self.window = window_function(self.fft_size)
@@ -102,7 +102,7 @@ class AudioProcessor(object):
         self.lower_log = math.log10(self.lower)
         self.higher_log = math.log10(self.higher)
         self.clip = lambda val, low, high: min(high, max(low, val))
-        
+
         # figure out what the maximum value is for an FFT doing the FFT of a DC signal
         fft = numpy.fft.rfft(numpy.ones(fft_size) * self.window)
         max_fft = (numpy.abs(fft)).max()
@@ -116,28 +116,26 @@ class AudioProcessor(object):
         # number of zeros to add to start and end of the buffer
         add_to_start = 0
         add_to_end = 0
-        
+
         if start < 0:
-            # the first FFT window starts centered around zero
             if size + start <= 0:
                 return numpy.zeros(size) if resize_if_less else numpy.array([])
-            else:
-                self.audio_file.seek(0)
+            self.audio_file.seek(0)
 
-                add_to_start = -start # remember: start is negative!
-                to_read = size + start
+            add_to_start = -start # remember: start is negative!
+            to_read = size + start
 
-                if to_read > self.audio_file.nframes:
-                    add_to_end = to_read - self.audio_file.nframes
-                    to_read = self.audio_file.nframes
+            if to_read > self.audio_file.nframes:
+                add_to_end = to_read - self.audio_file.nframes
+                to_read = self.audio_file.nframes
         else:
             self.audio_file.seek(start)
-        
+
             to_read = size
             if start + to_read >= self.audio_file.nframes:
                 to_read = self.audio_file.nframes - start
                 add_to_end = size - to_read
-        
+
         try:
             samples = self.audio_file.read_frames(to_read)
         except RuntimeError:
@@ -151,11 +149,11 @@ class AudioProcessor(object):
         if resize_if_less and (add_to_start > 0 or add_to_end > 0):
             if add_to_start > 0:
                 samples = numpy.concatenate((numpy.zeros(add_to_start), samples), axis=1)
-            
+
             if add_to_end > 0:
                 samples = numpy.resize(samples, size)
                 samples[size - add_to_end:] = 0
-        
+
         return samples
 
 
@@ -169,24 +167,24 @@ class AudioProcessor(object):
         spectrum = self.scale * numpy.abs(fft) # normalized abs(FFT) between 0 and 1
         length = numpy.float64(spectrum.shape[0])
         spectrum[:2] = 0 # DC offset should not be included
-        
+
         energy = spectrum.sum()
         if energy < 1e-60:
             spectral_centroid = -1 # Silence
         else:
             # calculate the spectral centroid
-            
-            if self.spectrum_range == None:  #Always is?
+
+            if self.spectrum_range is None:  #Always is?
                 self.spectrum_range = numpy.arange(length)
-        
+
             # Compute the spectral centroid in hertz
             spectral_centroid = (spectrum * self.spectrum_range).sum() / (energy * (length - 1)) * self.audio_file.samplerate * 0.5
-            
+
             # Clip centroid to desired frequency range, apply log so it's 
             # proportional to human perception of frequency, and then scale 
             # desired frequency range from 0 to 1
             spectral_centroid = (math.log10(self.clip(spectral_centroid, self.lower, self.higher)) - self.lower_log) / (self.higher_log - self.lower_log)
-        
+
         return (spectral_centroid)
 
 
@@ -198,35 +196,33 @@ class AudioProcessor(object):
         # larger blocksizes are faster but take more mem...
         # Aha, Watson, a clue, a tradeof!
         block_size = 4096
-    
+
         max_index = -1
         max_value = -1
         min_index = -1
         min_value = 1
-    
+
         if end_seek > self.audio_file.nframes:
             end_seek = self.audio_file.nframes
-    
-        if block_size > end_seek - start_seek:
-            block_size = end_seek - start_seek
-        
+
+        block_size = min(block_size, end_seek - start_seek)
         for i in range(start_seek, end_seek, block_size):
             samples = self.read(i, block_size)
-    
+
             local_max_index = numpy.argmax(samples)
             local_max_value = samples[local_max_index]
-    
+
             if local_max_value > max_value:
                 max_value = local_max_value
                 max_index = local_max_index
-    
+
             local_min_index = numpy.argmin(samples)
             local_min_value = samples[local_min_index]
-            
+
             if local_min_value < min_value:
                 min_value = local_min_value
                 min_index = local_min_index
-    
+
         return (min_value, max_value) if min_index < max_index else (max_value, min_value)
 
 
@@ -324,20 +320,20 @@ class WaveformImage(object):
 
         y1 = self.image_height * 0.5 - peaks[0] * (self.image_height - 4) * 0.5
         y2 = self.image_height * 0.5 - peaks[1] * (self.image_height - 4) * 0.5
-        
+
         if spectral_centroid == -1:
             # Dark gray for silence
             line_color = (50, 50, 50)
         else:
             line_color = self.color_lookup[int(spectral_centroid*255.0)]
-        
-        if self.previous_y != None:
-            self.draw.line([self.previous_x, self.previous_y, x, y1, x, y2], line_color)
-        else:
+
+        if self.previous_y is None:
             self.draw.line([x, y1, x, y2], line_color)
-    
+
+        else:
+            self.draw.line([self.previous_x, self.previous_y, x, y1, x, y2], line_color)
         self.previous_x, self.previous_y = x, y2
-        
+
         self.draw_anti_aliased_pixels(x, y1, y2, line_color)
     
     def draw_anti_aliased_pixels(self, x, y1, y2, color):
@@ -346,27 +342,27 @@ class WaveformImage(object):
         y_max = max(y1, y2)
         y_max_int = int(y_max)
         alpha = y_max - y_max_int
-        
+
         if alpha > 0.0 and alpha < 1.0 and y_max_int + 1 < self.image_height:
             current_pix = self.pix[x, y_max_int + 1]
-                
+
             r = int((1-alpha)*current_pix[0] + alpha*color[0])
             g = int((1-alpha)*current_pix[1] + alpha*color[1])
             b = int((1-alpha)*current_pix[2] + alpha*color[2])
-            
+
             self.pix[x, y_max_int + 1] = (r,g,b)
-            
+
         y_min = min(y1, y2)
         y_min_int = int(y_min)
         alpha = 1.0 - (y_min - y_min_int)
-        
-        if alpha > 0.0 and alpha < 1.0 and y_min_int - 1 >= 0:
+
+        if alpha > 0.0 and alpha < 1.0 and y_min_int >= 1:
             current_pix = self.pix[x, y_min_int - 1]
-                
+
             r = int((1-alpha)*current_pix[0] + alpha*color[0])
             g = int((1-alpha)*current_pix[1] + alpha*color[1])
             b = int((1-alpha)*current_pix[2] + alpha*color[2])
-            
+
             self.pix[x, y_min_int - 1] = (r,g,b)
             
     def save(self, filename):
@@ -385,9 +381,9 @@ def create_wave_images(input_filename, output_filename_w, output_filename_s, ima
     start_time = time()
     processor = AudioProcessor(input_filename, fft_size, numpy.hanning)
     samples_per_pixel = processor.audio_file.nframes / float(image_width)
-    
+
     waveform = WaveformImage(image_width, image_height)
-    
+
     for x in range(image_width):
         if time() - start_time > 30: # Kludge to crash if it takes longer than 10 seconds
             raise Exception("Took too long")
@@ -396,14 +392,14 @@ def create_wave_images(input_filename, output_filename_w, output_filename_s, ima
 
         seek_point = int(x * samples_per_pixel)
         next_seek_point = int((x + 1) * samples_per_pixel)
-        
+
         spectral_centroid = processor.spectral_centroid(seek_point)
         peaks = processor.peaks(seek_point, next_seek_point)
-        
+
         waveform.draw_peaks(x, peaks, spectral_centroid)
-    
+
     if progress_callback:
         progress_callback(100)
-        
+
     waveform.save(output_filename_w)
 
