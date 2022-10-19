@@ -22,7 +22,7 @@ parser.set_defaults(output_filename_w=None, output_filename_s=None, image_width=
 (options, args) = parser.parse_args()
 
 # Force image height to be an odd number
-if options.image_height == None:
+if options.image_height is None:
     options.image_height = int(options.image_width // 2)
     if options.image_height % 2 == 0:
         options.image_height -= 1
@@ -30,12 +30,12 @@ if options.image_height == None:
 if len(args) == 0:
     parser.print_help()
     parser.error("not enough arguments")
-   
+
     if len(args) > 1 and (options.output_filename_w != None or options.output_filename_s != None):
         parser.error("when processing multiple files you can't define the output filename!")
  
 def progress_callback(percentage):
-    sys.stdout.write(str(percentage) + "% ")
+    sys.stdout.write(f"{str(percentage)}% ")
     sys.stdout.flush()
    
     # process all files so the user can use wildcards like *.wav
